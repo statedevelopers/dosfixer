@@ -1,0 +1,5 @@
+name = DoS Data Fixer
+description = "Runs miscellaneous parsers for State Department imported data."
+core = 7.x
+
+
