@@ -1,0 +1,12 @@
+name = DoS Data Fixer
+description = "Runs miscellaneous parsers for State Department imported data."
+core = 7.x
+
+
+
+
+; Information added by drush on 2012-06-14
+version = "unknown"
+project = "dosfixer"
+datestamp = "1339686082"
+

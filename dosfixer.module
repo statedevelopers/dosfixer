@@ -1,0 +1,219 @@
+<?php
+/**
+ * @file
+ * DoS Fixer Module file.
+ *
+ */
+
+/**
+ * Implements hook_help.
+ *
+ * Displays help and module information.
+ *
+ * @param path
+ *   Which path of the site we're using to display help
+ * @param arg
+ *   Array that holds the current path as returned from arg() function
+ */
+  function dosfixer_help($path, $arg) {
+    switch ($path) {
+      case "admin/help#dosfixer":
+        return '<p>' . t("This custom module performs miscellaneous tasks not appropriate for a contributed module.") . '</p>';
+        break;
+    }
+  }
+
+/**
+ * Implements hook_menu().
+ *
+ */
+  function dosfixer_menu() {
+    $items = array();
+
+    // Fix-it operation for cleaning up nodes.
+    $items['fixer/%/%/%'] = array(
+      'title' => 'Fixer for nodes',
+      'description' => 'Revise data for imported nodes.',
+      'page callback'=>'dosfixer_fixer',
+      'page arguments' => array(1,2,3),
+      'access arguments' => array('edit image_record'),
+      'file' => 'dosfixer.inc',
+      'type'=>MENU_CALLBACK,
+    );
+
+    // Fix-it operation for cleaning up users.
+    $items['fixeruser/%/%'] = array(
+      'title' => 'Fixer for users',
+      'description' => 'Revise data for imported users.',
+      'page callback'=>'dosfixer_fixeruser',
+      'page arguments' => array(1,2),
+      'access arguments' => array('edit user'),
+      'file' => 'dosfixer.inc',
+      'type'=>MENU_CALLBACK,
+    );
+
+    // Fix-it operation for deleting orphaned field data.
+    // Deleting entries in field tables associated with nodes
+    // that no longer exist. 
+    $items['fixerorphans/%/%'] = array(
+      'title' => 'Fixer for orphaned field data',
+      'description' => 'Remove field entries for non-existent entities.',
+      'page callback'=>'dosfixer_fixerorphans',
+      'page arguments' => array(1,2),
+      'access arguments' => array('edit article'),
+      'file' => 'dosfixer.inc',
+      'type'=>MENU_CALLBACK,
+    );
+
+    return $items;
+  }
+
+/*
+  function dosfixer_node_insert() {
+    drupal_set_message(t('Please allow 24 hours for indexing before new entries appear in searches.'));
+  }
+  
+  function dosfixer_node_update() {
+    drupal_set_message(t('Please allow 24 hours for indexing before changed content is searchable.'));
+  }
+*/
+
+/**
+ * Callback function for fixing node data.
+ *
+ * Parses all the nodes and makes logical corrections.
+ *
+ */
+  function dosfixer_fixer($bundle, $offset_iterations = 0, $max_iterations = 100) {
+    //if($nid0) return(dosfixer_shownode($nid0, $nid1));
+
+    // SET CONSTANTS
+      $iteration_count = 0;
+      $changecount = 0;
+      $skipcount = 0;
+
+    // LOAD COMPARISON ARRAYS
+      //$regions = dosfixer_loadregions();
+      //$users = dosfixer_loadusers();
+      //$countries = dosfixer_loadcountries();
+      //$countryregions = dosfixer_loadcountryregions();
+
+    // PARSE THE NODES
+      $result = db_query("SELECT nid FROM {node} WHERE type = '$bundle' LIMIT $offset_iterations, $max_iterations");
+      foreach ($result as $key=>$record) {      
+        $iteration_count++;      
+        $node = node_load($record->nid);
+        
+        // First check for dupes.If this is the dupe, delete and skip the rest.
+        if (dosfixer_nodeaudit_finddups($node)) {
+          $changecount++;
+        } else {
+          $skipcount++;
+          // Choose a general node function.
+          dosfixer_setnode_authorfromauxauthor($node) ? $changecount++ : $skipcount++;
+          dosfixer_setnode_datesfromaux($node) ? $changecount++ : $skipcount++;             
+  
+          if ($bundle == "image_record") {
+            // Choose a photos function. 
+            //No longer common in photos. //dosfixer_setnode_countryfromcontent($node, $countries) ? $changecount++ : $skipcount++;
+            //No longer common in photos. //dosfixer_setnode_regionfromkeywords($node, $regions) ? $changecount++ : $skipcount++;
+            //No longer common in photos. //dosfixer_setnode_regionfromcountry($node, $countryregions) ? $changecount++ : $skipcount++;
+            //No longer common in photos. //dosfixer_setnode_creationfromdate($node) ? $changecount++ : $skipcount++;
+            dosfixer_setnode_datefromdesc($node) ? $changecount++ : $skipcount++;
+            //dosfixer_setnode_datefromexif($node) ? $changecount++ : $skipcount++;
+            dosfixer_setnode_personfromcontent($node) ? $changecount++ : $skipcount++;
+            dosfixer_setnode_dateformat($node) ? $changecount++ : $skipcount++;
+          } elseif ($bundle == "article") {
+            // Choose an articles function.
+            dosfixer_setnode_restoresummary($node) ? $changecount++ : $skipcount++;
+            dosfixer_setnode_setauximage($node) ? $changecount++ : $skipcount++;
+            dosfixer_setnode_setbcvideo($node) ? $changecount++ : $skipcount++;
+            dosfixer_setnode_setauxvideo($node) ? $changecount++ : $skipcount++;
+            dosfixer_setnode_splittags($node) ? $changecount++ : $skipcount++;
+          }
+        }
+      }
+
+print $iteration_count . " items reviewed from " . ($offset_iterations) . " to " . ($offset_iterations+$key) . ".<br />\n";
+print "$changecount changes made.<br />\n";
+  }
+
+/**
+ * Callback function for fixing user data.
+ *
+ * Parses all the users and makes logical corrections.
+ *
+ */
+  function dosfixer_fixeruser($offset_iterations = 0, $max_iterations = 100) {
+    // SET CONSTANTS
+      $iteration_count = 0;
+      $changecount = 0;
+
+    // LOAD COMPARISON ARRAYS
+      //$regions = dosfixer_loadregions();
+      //$countries = dosfixer_loadcountries();
+      //$countryregions = dosfixer_loadcountryregions();
+
+    // PARSE THE NODES
+      $users = dosfixer_loadusers($offset_iterations, $max_iterations);
+      foreach ($users as $key=>$user) {
+        $iteration_count++;      
+                
+        // Choose a function. 
+        dosfixer_setuser_fullname($user) ? $changecount++ : $skipcount++;
+      }
+
+print $iteration_count . " items reviewed from " . ($offset_iterations) . " to " . ($offset_iterations+$key) . ".<br />\n";
+print "$changecount changes made.<br />\n";
+  }
+
+/**
+ * Callback function for removing orphaned field entries.
+ *
+ * Parses all the entries in a field table and deletes those without an existing node.
+ *
+ */
+  function dosfixer_fixerorphans($offset_iterations = 0, $max_iterations = 100) {
+    // SET CONSTANTS
+      $iteration_count = 0;
+      $changecount = 0;
+      $ghostnodes = array();
+
+
+    // PARSE THE NODES
+      $tables = dosfixer_loadfieldtables();
+      foreach ($tables as $key=>$table) {
+        $iteration_count++;      
+                
+        // Choose a function. 
+        $ghostnodes[$table] = dosfixer_cleartable($table);
+      }
+
+print "Orphan search complete.<br />\n";
+  }
+
+/**
+ * Basic string function to find a word in a string.
+ *
+ * More intelligent use of strpos for whole words or names.
+ *
+ */
+  function dosfixer_strpos($haystack, $needle, $capitalized = 0) {    
+    $pos = stripos($haystack,$needle);
+
+    if($pos===FALSE) return(FALSE);
+
+    // Confirm start of the word
+    if(ctype_alpha(substr($haystack, ($pos-1),1))) return(FALSE);
+
+    // Confirm end of the word
+    if(ctype_alpha(substr($haystack, ($pos+strlen($needle)), 1))) return(FALSE);
+
+    // Check for capitalization
+    if($capitalized) {
+      if(ctype_lower(substr($haystack, ($pos),1))) return(FALSE);
+    }
+
+    return($pos);
+  }
+
