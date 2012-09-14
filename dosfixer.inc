@@ -161,7 +161,7 @@ print "-->Node <a href=\"/node/$node->nid\">$node->nid</a>: Key $key: Changing c
    */
     function dosfixer_setnode_authorfromauxauthor($node) {
       // Must have auxiliary author field value && must not be assigned to any user other than Admin
-      if(!empty($node->field_auxauthor['und'][0]['value']) && $node->uid == 1) {
+      if(!empty($node->field_auxauthor['und'][0]['value']) && $node->uid <= 1) { //uid 1=admin, 0=anonymous
         // If not admin, then verify the username. 
         $result = db_query("SELECT u.name FROM users u WHERE u.uid = " . $node->uid);
         
