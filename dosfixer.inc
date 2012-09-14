@@ -757,7 +757,7 @@ print "NODE: <a href=\"/node/$node->nid/edit\">$node->nid</a>: Tags split into <
 print "NODE: <a href=\"/node/$node->nid/edit\">$node->nid</a>: NO TAGS to work with.<br />\n";
         }
       } else {
-print "NODE: <a href=\"/node/$node->nid/edit\">$node->nid</a>: EMPTY tag field.<br />\n";
+//print "NODE: <a href=\"/node/$node->nid/edit\">$node->nid</a>: EMPTY tag field.<br />\n";
       }
 
       return FALSE;
